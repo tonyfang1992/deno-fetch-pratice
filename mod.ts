@@ -1,4 +1,14 @@
 import * as log from "https://deno.land/std@0.99.0/log/mod.ts";
+import * as _ from "https://deno.land/x/lodash@4.17.15-es/lodash.js";
+
+interface Launch {
+  flightNumber: number;
+  mission: string;
+  rocket: string;
+  customers: Array<string>;
+}
+
+const launches = new Map<number, Launch>();
 
 await log.setup({
   handlers: {
@@ -26,7 +36,29 @@ async function downloadLaunchData() {
   }
 
   const launchData = await response.json();
-  console.log(launchData);
+
+  for (const launch of launchData) {
+    const payloads = launch["rocket"]["second_stage"]["payloads"];
+    const customers = _.flatMap(payloads, (payload: any) => {
+      return payload["customers"];
+    });
+
+    const flightData = {
+      flightNumber: launch["flight_number"],
+      mission: launch["mission_name"],
+      rocket: launch["mission_name"],
+      customers: customers,
+    };
+
+    launches.set(flightData.flightNumber, flightData);
+
+    log.info(JSON.stringify(flightData));
+  }
 }
 
-await downloadLaunchData();
+// The boolean import.meta.main will let you know if the current module is the program entry point.
+if (import.meta.main) {
+  await downloadLaunchData();
+  log.info(JSON.stringify(import.meta));
+  log.info(`Download data for ${launches.size} spaceX launches.`);
+}
